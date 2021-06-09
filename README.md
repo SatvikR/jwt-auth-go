@@ -4,6 +4,15 @@ This is an example implementation of JWT auth in Go. This should NOT be used in 
 
 This implements JWT auth using two token types: Access and Refresh. The refresh tokens are stored as http only cookies, and the access tokens should be stored in memory on a frontend client.
 
+## Config
+
+Create a `.env` file with two variables
+
+```
+ACCESS_TOKEN_SECRET=
+REFRESH_TOKEN_SECRET=
+```
+
 ## Routes
 
 | Method | Route      | Data Required                             | Returns                               |
