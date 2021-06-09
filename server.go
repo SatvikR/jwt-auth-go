@@ -347,7 +347,7 @@ func main() {
 
 	r.POST("/login", Login)
 	r.POST("/signup", Signup)
-	r.POST("/logout", Logout)
+	r.DELETE("/logout", Logout)
 	r.PUT("/refresh", Refresh)
 
 	authRoutes.GET("/me", Me)
