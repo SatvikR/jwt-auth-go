@@ -1,0 +1,5 @@
+.env
+.DS_Store
+jwt-auth
+jwt-auth.exe
+bin/
