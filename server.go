@@ -50,14 +50,14 @@ type AuthHeader struct {
 }
 
 const (
-	AccessToken   TokenType = iota
-	RefreshToken  TokenType = iota
-	AccessString  string    = "access"
-	RefreshString string    = "refresh"
+	AccessToken         TokenType = iota
+	RefreshToken        TokenType = iota
+	AccessString        string    = "access"
+	RefreshString       string    = "refresh"
+	RefreshCookieString string    = "rtoken"
 )
 
 var users []*User
-var validTokens []string
 var config Config
 
 type User struct {
@@ -143,12 +143,13 @@ func GenerateTokenPair(uid string) (string, string, error) {
 	refreshToken, err := GenerateToken(RefreshToken, TokenClaims{
 		uid,
 		RefreshString,
-		jwt.StandardClaims{},
+		jwt.StandardClaims{
+			ExpiresAt: GetExpTime(7 * 24 * 60 * 60),
+		},
 	})
 	if err != nil {
 		return "", "", err
 	}
-	validTokens = append(validTokens, refreshToken)
 	return accessToken, refreshToken, nil
 }
 
@@ -195,6 +196,10 @@ func JWTAuth() gin.HandlerFunc {
 	}
 }
 
+func SetRefreshToken(c *gin.Context, token string) {
+	c.SetCookie(RefreshCookieString, token, 7*24*60*60, "/refresh", "localhost", false, true)
+}
+
 func Login(c *gin.Context) {
 	var reqBody LoginBody
 	if err := c.ShouldBindJSON(&reqBody); err != nil {
@@ -226,9 +231,9 @@ func Login(c *gin.Context) {
 		})
 	}
 
+	SetRefreshToken(c, refreshToken)
 	c.JSON(http.StatusCreated, &gin.H{
-		"accessToken":  accessToken,
-		"refreshToken": refreshToken,
+		"accessToken": accessToken,
 	})
 }
 
@@ -258,39 +263,23 @@ func Signup(c *gin.Context) {
 		})
 		return
 	}
+	SetRefreshToken(c, refreshToken)
 
 	c.JSON(http.StatusCreated, &gin.H{
-		"uid":          uid,
-		"accessToken":  accessToken,
-		"refreshToken": refreshToken,
+		"accessToken": accessToken,
 	})
 }
 
 func Refresh(c *gin.Context) {
-	var reqBody RefreshBody
-	if err := c.ShouldBindJSON(&reqBody); err != nil {
-		c.JSON(http.StatusBadRequest, &gin.H{
-			"error": "invalid request body",
-		})
-		return
-	}
-
-	whitelisted := false
-	for _, t := range validTokens {
-		if t == reqBody.Token {
-			whitelisted = true
-			break
-		}
-	}
-
-	if !whitelisted {
+	refreshToken, err := c.Cookie(RefreshCookieString)
+	if err != nil || refreshToken == "" {
 		c.JSON(http.StatusBadRequest, &gin.H{
 			"error": "token invalid",
 		})
 		return
 	}
 
-	claims, err := VerifyToken(reqBody.Token)
+	claims, err := VerifyToken(refreshToken)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, &gin.H{
 			"error": "token invalid",
@@ -298,13 +287,7 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	accessToken, err := GenerateToken(AccessToken, TokenClaims{
-		claims.Uid,
-		AccessString,
-		jwt.StandardClaims{
-			ExpiresAt: GetExpTime(15),
-		},
-	})
+	accessToken, refreshToken, err := GenerateTokenPair(claims.Uid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "unable to create token",
@@ -312,38 +295,15 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
+	SetRefreshToken(c, refreshToken)
 	c.JSON(http.StatusOK, &gin.H{
 		"accessToken": accessToken,
 	})
 }
 
 func Logout(c *gin.Context) {
-	var reqBody LogoutBody
-	if err := c.ShouldBindJSON(&reqBody); err != nil {
-		c.JSON(http.StatusBadRequest, &gin.H{
-			"error": "invalid request body",
-		})
-		return
-	}
+	SetRefreshToken(c, "")
 
-	tokenIdx := -1
-	for i, t := range validTokens {
-		if t == reqBody.Token {
-			tokenIdx = i
-			break
-		}
-	}
-
-	if tokenIdx == -1 {
-		c.JSON(http.StatusBadRequest, &gin.H{
-			"error": "you were never logged in (how'd you get here?)",
-		})
-		return
-	}
-
-	// Remove token from whitelist
-	validTokens[tokenIdx] = validTokens[len(validTokens)-1]
-	validTokens = validTokens[:len(validTokens)-1]
 	c.JSON(http.StatusOK, &gin.H{
 		"message": "logout successful",
 	})
@@ -393,7 +353,15 @@ func main() {
 	authRoutes.GET("/me", Me)
 
 	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowAllOrigins = true
+	// Wherever your frontend is runnning
+	corsConfig.AllowOrigins = []string{"http://localhost:3000"}
+	corsConfig.AllowCredentials = true
+	corsConfig.AllowHeaders = []string{
+		"Origin",
+		"Content-Length",
+		"Content-Type",
+		"Authorization",
+	}
 	r.Use(cors.New(corsConfig))
 
 	r.Run(":8001")
