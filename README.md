@@ -2,6 +2,15 @@
 
 This is an example implementation of JWT auth in Go. This should NOT be used in production; there's no database and the users don't have passwords. This should only be used as a reference when building your own authentication system.
 
+## Config
+
+Create a `.env` file with two variables 
+
+```
+ACCESS_TOKEN_SECRET=
+REFRESH_TOKEN_SECRET=
+```
+
 ## Routes
 
 | Route          | Data Required                             | Returns                                                      |
