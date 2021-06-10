@@ -1,4 +1,4 @@
-module github.com/SatvikR/jwt-auth
+module github.com/SatvikR/jwt-auth-go
 
 go 1.16
 
