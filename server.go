@@ -9,13 +9,16 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
+// ConfigData is the parsed version of the .env file
 type ConfigData struct {
 	AccessTokenSecret  []byte
 	RefreshTokenSecret []byte
 }
 
+// Config holds the server configuration
 var Config ConfigData
 
+// LoadConfig loads configuration data from a .env file
 func LoadConfig() {
 	Config = ConfigData{
 		[]byte(os.Getenv("ACCESS_TOKEN_SECRET")),

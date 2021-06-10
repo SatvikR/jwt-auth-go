@@ -48,7 +48,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	accessToken, refreshToken, err := GenerateTokenPair(user.Uid)
+	accessToken, refreshToken, err := GenerateTokenPair(user.UID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "unable to generate tokens",
@@ -113,7 +113,7 @@ func Refresh(c *gin.Context) {
 		return
 	}
 
-	accessToken, refreshToken, err := GenerateTokenPair(claims.Uid)
+	accessToken, refreshToken, err := GenerateTokenPair(claims.UID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "unable to create token",
@@ -150,7 +150,7 @@ func Me(c *gin.Context) {
 
 	var username string
 	for _, u := range Users {
-		if u.Uid == claims.Uid {
+		if u.UID == claims.UID {
 			username = u.Username
 			break
 		}

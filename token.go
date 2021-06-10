@@ -31,7 +31,7 @@ const (
 
 // TokenClaims contains the data stored within a JWT
 type TokenClaims struct {
-	Uid       string `json:"uid"`
+	UID       string `json:"uid"`
 	TokenType string `json:"tokenType"`
 	jwt.StandardClaims
 }
@@ -154,7 +154,7 @@ func JWTAuth() gin.HandlerFunc {
 	}
 }
 
-// SetRefrehToken sets the rtoken httpOnly cookie
+// SetRefreshToken sets the rtoken httpOnly cookie
 func SetRefreshToken(c *gin.Context, token string) {
 	c.SetCookie(RefreshCookieString, token, 7*24*60*60, "/refresh", "localhost", false, true)
 }

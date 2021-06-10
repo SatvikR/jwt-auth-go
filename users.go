@@ -10,7 +10,7 @@ var Users []*User
 // User holds all the user info
 type User struct {
 	Username string
-	Uid      string
+	UID      string
 }
 
 // CreateUser creates a user and saves it given a username.
@@ -23,5 +23,5 @@ func CreateUser(username string) string {
 
 	Users = append(Users, newUser)
 
-	return newUser.Uid
+	return newUser.UID
 }
