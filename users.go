@@ -8,9 +8,6 @@ import (
 	"github.com/matthewhartstonge/argon2"
 )
 
-// Users holds references to all the users.
-// Generally these would be stored in some kind of database
-var Users []*User
 var DB *pg.DB
 
 // User holds all the user info
