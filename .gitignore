@@ -1,5 +1,5 @@
 .env
 .DS_Store
-jwt-auth
-jwt-auth.exe
+jwt-auth-go
+jwt-auth-go.exe
 bin/

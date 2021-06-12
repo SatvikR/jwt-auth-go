@@ -6,13 +6,21 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/go-pg/pg/v10"
+	"github.com/go-pg/pg/v10/orm"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/matthewhartstonge/argon2"
 )
 
 // ConfigData is the parsed version of the .env file
 type ConfigData struct {
 	AccessTokenSecret  []byte
 	RefreshTokenSecret []byte
+	DBAddr             string
+	DBUser             string
+	DBPassword         string
+	DBName             string
+	Argon              argon2.Config
 }
 
 // Config holds the server configuration
@@ -23,7 +31,19 @@ func LoadConfig() {
 	Config = ConfigData{
 		[]byte(os.Getenv("ACCESS_TOKEN_SECRET")),
 		[]byte(os.Getenv("REFRESH_TOKEN_SECRET")),
+		os.Getenv("DB_ADDR"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_NAME"),
+		argon2.DefaultConfig(),
 	}
+	DB = pg.Connect(&pg.Options{
+		Addr:     Config.DBAddr,
+		User:     Config.DBUser,
+		Password: Config.DBPassword,
+		Database: Config.DBName,
+	})
+	DB.Model(&User{}).CreateTable(&orm.CreateTableOptions{})
 }
 
 func main() {

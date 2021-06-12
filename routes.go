@@ -11,11 +11,13 @@ import (
 // SignupBody holds the info needed to create a user
 type SignupBody struct {
 	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 // LoginBody holds the info needed to login a user
 type LoginBody struct {
 	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 // AuthHeader holds the authorization headers needed to make authenticated requests
@@ -33,22 +35,16 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	var user *User
-	for _, u := range Users {
-		if u.Username == reqBody.Username {
-			user = u
-			break
-		}
-	}
+	user, err := GetUserIfValid(reqBody.Username, reqBody.Password)
 
-	if user == nil {
+	if err != nil {
 		c.JSON(http.StatusBadRequest, &gin.H{
-			"error": "unable to find username",
+			"error": "username/password invalid",
 		})
 		return
 	}
 
-	accessToken, refreshToken, err := GenerateTokenPair(user.UID)
+	accessToken, refreshToken, err := GenerateTokenPair(user.Id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "unable to generate tokens",
@@ -71,15 +67,34 @@ func Signup(c *gin.Context) {
 		return
 	}
 
-	for _, u := range Users {
-		if u.Username == reqBody.Username {
-			c.JSON(http.StatusBadRequest, &gin.H{
-				"error": "user already exists",
-			})
-			return
-		}
+	_, err := GetUserIfExists(reqBody.Username)
+	if err == nil {
+		c.JSON(http.StatusBadRequest, &gin.H{
+			"error": "user already exists",
+		})
+		return
 	}
-	uid := CreateUser(reqBody.Username)
+	if len(reqBody.Password) < 3 {
+		c.JSON(http.StatusBadRequest, &gin.H{
+			"error": "password must be at least 3 chars long",
+		})
+		return
+	}
+
+	encodedPw, err := Config.Argon.HashEncoded([]byte(reqBody.Password))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, &gin.H{
+			"error": "unable to hash password",
+		})
+		return
+	}
+	uid, err := CreateUser(reqBody.Username, string(encodedPw))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "unable to create user",
+		})
+		return
+	}
 
 	accessToken, refreshToken, err := GenerateTokenPair(uid)
 	if err != nil {
@@ -148,15 +163,9 @@ func Me(c *gin.Context) {
 	}
 	claims := rawClaims.(*TokenClaims)
 
-	var username string
-	for _, u := range Users {
-		if u.UID == claims.UID {
-			username = u.Username
-			break
-		}
-	}
+	username, err := GetUsernameFromUid(claims.UID)
 
-	if username == "" {
+	if err != nil {
 		c.JSON(http.StatusBadRequest, &gin.H{
 			"error": "cannot find user",
 		})
